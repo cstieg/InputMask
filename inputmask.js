@@ -69,7 +69,7 @@ var inputMask = {
   },
 
   isSymbol: function(testChar) {
-    return (inputMask.symbolList.indexOf(testChar) >= 0);
+    return (inputMask.symbolList.includes(testChar));
   },
 
   testSymbols: function(maskChar, testChar) {
@@ -83,11 +83,15 @@ var inputMask = {
   },
 
   test9: function(testChar) {
-    return ('0123456789 '.indexOf(testChar) >= 0);
+    return ('0123456789 '.includes(testChar));
   },
 
   test0: function(testChar) {
-    return ('0123456789'.indexOf(testChar) >= 0);
+    return ('0123456789'.includes(testChar));
+  },
+
+  testHash: function(testchar) {
+    return ('0123456789'.includes(testChar));
   }
 
 
