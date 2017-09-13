@@ -75,23 +75,25 @@ var inputMask = {
   testSymbols: function(maskChar, testChar) {
     switch (maskChar) {
       case '9':
-        return inputMask.test9(testChar);
+        return testChar == ' ' || inputMask.isDigit(testChar);
       case '0':
-        return inputMask.test0(testChar);
+        return inputMask.isDigit(testChar);
+      case '#':
+        return ' +-'.includes(testChar) || inputMask.isDigit(testChar);
+      case 'L':
+        return inputMask.isLetter(testChar);
+      case '?':
+        return testChar == ' ' || inputMask.isLetter(testChar);
     }
     return true;
   },
 
-  test9: function(testChar) {
-    return ('0123456789 '.includes(testChar));
-  },
-
-  test0: function(testChar) {
+  isDigit: function(testChar) {
     return ('0123456789'.includes(testChar));
   },
 
-  testHash: function(testchar) {
-    return ('0123456789'.includes(testChar));
+  isLetter: function(testChar) {
+    return testChar.toLowerCase() != testChar.toUpperCase();
   }
 
 
