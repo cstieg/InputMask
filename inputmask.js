@@ -7,8 +7,44 @@ var inputMask = {
       if (elements[i].hasAttribute('mask')) {
         var mask = elements[i].getAttribute('mask');
         elements[i].addEventListener('keypress', inputMask.maskKeyPress);
+        elements[i].addEventListener('blur', inputMask.maskLostFocus);
       }
     }
+  },
+
+  validationFailed: function(e, message) {
+    alert(message);
+    return false;
+  },
+
+  maskLostFocus: function(e) {
+    var mask = this.getAttribute('mask');
+    var errorMessage = '';
+    if (this.value.length > mask.length) {
+      errorMessage = 'Input is too long!';
+      return inputMask.validationFailed(e, errorMessage);
+    }
+
+    var inputChar = '';
+    var maskChar = '';
+
+    for (var i = 0; i < mask.length; i++) {
+      maskChar = mask.substring(i, i+1);
+      inputChar = this.value.substring(i, i+1) || '';
+      if (inputMask.isSymbol(maskChar)) {
+        if (!inputMask.testSymbols(maskChar, inputChar)) {
+          errorMessage = 'Invalid input!';
+          return inputMask.validationFailed(e, errorMessage);
+        }
+      }
+      else {
+        if (maskChar != inputChar) {
+          errorMessage = 'Invalid input!';
+          return inputMask.validationFailed(e, errorMessage);
+        }
+      }
+    }
+
   },
 
   maskKeyPress: function(e) {
@@ -72,17 +108,17 @@ var inputMask = {
   testSymbols: function(maskChar, testChar) {
     switch (maskChar) {
       case '9':
-        return testChar == ' ' || inputMask.isDigit(testChar);
+        return testChar !== '' && testChar == ' ' || inputMask.isDigit(testChar);
       case '0':
         return inputMask.isDigit(testChar);
       case '#':
         return ' +-'.includes(testChar) || inputMask.isDigit(testChar);
       case 'L':
-        return inputMask.isLetter(testChar);
+        return testChar !== '' && inputMask.isLetter(testChar);
       case '?':
         return testChar == ' ' || inputMask.isLetter(testChar);
       case 'A':
-        return inputMask.isLetter(testChar) || inputMask.isDigit(testChar);
+        return testChar !== '' && inputMask.isLetter(testChar) || inputMask.isDigit(testChar);
       case 'a':
         return testChar == ' ' || inputMask.isLetter(testChar) || inputMask.isDigit(testChar);
       case '&':
@@ -90,7 +126,7 @@ var inputMask = {
       case 'C':
          return true;
     }
-    return true;
+    return false;
   },
 
   isDigit: function(testChar) {
