@@ -7,19 +7,34 @@ var inputMask = {
       if (elements[i].hasAttribute('mask')) {
         var mask = elements[i].getAttribute('mask');
         elements[i].addEventListener('keypress', inputMask.maskKeyPress);
-        elements[i].addEventListener('blur', inputMask.maskLostFocus);
+        elements[i].onblur = inputMask.maskLostFocus;
       }
     }
   },
 
   validationFailed: function(e, message) {
+    // workaround to stop alert from taking focus from input window and firing blur again
+    var handler = e.currentTarget.onblur;
+    e.currentTarget.onblur = null;
     alert(message);
-    return false;
+
+    // Setting handler back immediately after alert still causes blur to fire again
+    // Setting the handler back after 1/10th of a second does the trick
+    setTimeout(function(currentTarget, handler) {
+      currentTarget.onblur = handler;
+    }, 100, e.currentTarget, handler);
+
+    return true;
   },
 
   maskLostFocus: function(e) {
     var mask = this.getAttribute('mask');
     var errorMessage = '';
+
+    if (this.value.length === 0) {
+      return true;
+    }
+
     if (this.value.length > mask.length) {
       errorMessage = 'Input is too long!';
       return inputMask.validationFailed(e, errorMessage);
@@ -27,7 +42,6 @@ var inputMask = {
 
     var inputChar = '';
     var maskChar = '';
-
     for (var i = 0; i < mask.length; i++) {
       maskChar = mask.substring(i, i+1);
       inputChar = this.value.substring(i, i+1) || '';
@@ -53,6 +67,11 @@ var inputMask = {
     var mask = this.getAttribute('mask');
     var inputChar = '';
     var maskChar = '';
+
+    if (this.value.length >= mask.length) {
+      return inputMask.cancelInput(e, this);
+    }
+
     // check previous
     for (var i = 0; i < currentPosition; i++) {
       maskChar = mask.substring(i, i+1);
