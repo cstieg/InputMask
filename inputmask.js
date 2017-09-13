@@ -1,5 +1,5 @@
 var inputMask = {
-  symbolList: '90*&',
+  symbolList: '90#L?Aa&C',
 
   addMaskListeners: function() {
     var elements = document.getElementsByTagName('input');
@@ -36,13 +36,11 @@ var inputMask = {
     // process inputted char
     inputChar = e.key;
     while (currentPosition < mask.length) {
-      debugger;
       maskChar = mask.substring(currentPosition, currentPosition + 1);
       if (inputMask.isSymbol(maskChar)) {
         if (!inputMask.testSymbols(maskChar, inputChar)) {
           return inputMask.cancelInput(e);
         }
-
         break;
       }
       else {
@@ -51,7 +49,6 @@ var inputMask = {
           currentPosition++;
           continue;
         }
-
         break;
       }
     }
@@ -84,6 +81,14 @@ var inputMask = {
         return inputMask.isLetter(testChar);
       case '?':
         return testChar == ' ' || inputMask.isLetter(testChar);
+      case 'A':
+        return inputMask.isLetter(testChar) || inputMask.isDigit(testChar);
+      case 'a':
+        return testChar == ' ' || inputMask.isLetter(testChar) || inputMask.isDigit(testChar);
+      case '&':
+         return testChar !== '';
+      case 'C':
+         return true;
     }
     return true;
   },
