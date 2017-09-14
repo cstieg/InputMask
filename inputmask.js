@@ -36,7 +36,7 @@ var inputMask = {
       if (elements[i].hasAttribute('mask')) {
         var mask = elements[i].getAttribute('mask');
         elements[i].addEventListener('keypress', inputMask.maskKeyPress);
-        elements[i].addEventListener('change', inputMask.maskChange);
+        elements[i].addEventListener('onpaste', inputMask.maskPaste);
       }
     }
   },
@@ -44,33 +44,38 @@ var inputMask = {
   // Handles a key press in an input element with a 'mask' property
   maskKeyPress: function(e) {
     if (e.ctrlKey || e.altKey) return;
-    var currentPosition = this.selectionStart;
-    var mask = this.getAttribute('mask');
-    var maskInfo = inputMask.getMaskInfo(mask);
-    var inputChar = '';
-    var maskChar = '';
-    var symbolMaskChar = '';
-    var literalMaskChar = '';
+    this.currentPosition = this.selectionStart;
+    var maskInfo = inputMask.getMaskInfo(this.getAttribute('mask'));
 
     // process inputted char
-    inputChar = e.key;
-    while (currentPosition < maskInfo.symbolMask.length) {
+    var isValidChar = inputMask.processChar(this, e.key, maskInfo, e);
+    if (isValidChar) {
+      return true;
+    }
+    return inputMask.cancelInput(e);
+  },
+
+
+  processChar: function(inputObj, inputChar, maskInfo, e) {
+    var symbolMaskChar = '';
+    var literalMaskChar = '';
+    while (inputObj.currentPosition < maskInfo.symbolMask.length) {
       // mask character at current input location
-      symbolMaskChar = maskInfo.symbolMask.substring(currentPosition, currentPosition + 1);
-      literalMaskChar = maskInfo.literalMask.substring(currentPosition, currentPosition + 1);
+      symbolMaskChar = maskInfo.symbolMask.substring(inputObj.currentPosition, inputObj.currentPosition + 1);
+      literalMaskChar = maskInfo.literalMask.substring(inputObj.currentPosition, inputObj.currentPosition + 1);
 
       // If mask has a symbol here, test to make sure input character meets the constraints of the mask
       if (symbolMaskChar !== ' ') {
         // cancel input character if doesn't meet constraints of mask
         if (!inputMask.testSymbols(symbolMaskChar, inputChar)) {
-          return inputMask.cancelInput(e);
+          return false;
         }
-        inputMask.convertLetterCase(this, e, inputChar, currentPosition, maskInfo);
+        inputMask.convertLetterCase(inputObj, e, inputChar, inputObj.currentPosition, maskInfo);
 
         // If have filled the last wildcard symbol, add the rest of the literal mask
-        var charsLeft = maskInfo.symbolMask.length - (currentPosition + 1);
-        if (maskInfo.symbolMask.substr(currentPosition + 1, charsLeft).trim() === '') {
-          this.value += maskInfo.literalMask.substr(currentPosition + 1, charsLeft);
+        var charsLeft = maskInfo.symbolMask.length - (inputObj.currentPosition + 1);
+        if (maskInfo.symbolMask.substr(inputObj.currentPosition + 1, charsLeft).trim() === '') {
+          inputObj.value += maskInfo.literalMask.substr(inputObj.currentPosition + 1, charsLeft);
         }
 
         return true;
@@ -79,55 +84,15 @@ var inputMask = {
       else {
         // drop through any framework characters
         if (literalMaskChar != inputChar) {
-          this.value += literalMaskChar;
-          currentPosition++;
+          inputObj.value += literalMaskChar;
+          inputObj.currentPosition++;
           continue;
         }
         return true;
       }
     }
     // if there are no more characters in mask, cancel input
-    return inputMask.cancelInput(e);
-  },
-
-  // Handles a value change (after lost focus) in an input element with a 'mask' property
-  maskChange: function(e) {
-    var mask = this.getAttribute('mask');
-    var maskInfo = inputMask.getMaskInfo(mask);
-    var inputChar = '';
-    var maskChar = '';
-
-    // Always allow leaving the field if empty
-    if (this.value.length === 0) {
-      return true;
-    }
-
-    // Don't allow input that is longer than mask
-    if (this.value.length > maskInfo.symbolMask.length) {
-      return inputMask.validationFailed(e, 'Input is too long!');
-    }
-
-    // process inputted char
-    for (var i = 0; i < maskInfo.symbolMask.length; i++) {
-      inputChar = this.value.substring(i, i+1) || '';
-      // mask character at current input location
-      symbolMaskChar = maskInfo.symbolMask.substring(i, i + 1);
-      literalMaskChar = maskInfo.literalMask.substring(i, i + 1);
-
-      // If mask has a symbol here, test to make sure input character meets the constraints of the mask
-      if (symbolMaskChar !== ' ') {
-        // Disallow input character if doesn't meet constraints of mask
-        if (!inputMask.testSymbols(symbolMaskChar, inputChar)) {
-          return inputMask.validationFailed(e, 'Invalid input!');
-        }
-      }
-      else {
-        // Disallow input character if doesn't match mask framework
-        if (literalMaskChar != inputChar) {
-          return inputMask.validationFailed(e, 'Invalid input!');
-        }
-      }
-    }
+    return false;
   },
 
   // Checks whether a character is one of the special wildcard symbols
