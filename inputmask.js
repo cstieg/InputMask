@@ -66,6 +66,13 @@ var inputMask = {
           return inputMask.cancelInput(e);
         }
         inputMask.convertLetterCase(this, e, inputChar, currentPosition, maskInfo);
+
+        // If have filled the last wildcard symbol, add the rest of the literal mask
+        var charsLeft = maskInfo.symbolMask.length - (currentPosition + 1);
+        if (maskInfo.symbolMask.substr(currentPosition + 1, charsLeft).trim() === '') {
+          this.value += maskInfo.literalMask.substr(currentPosition + 1, charsLeft);
+        }
+
         return true;
       }
       // if mask is not a symbol here, find the next place this input character matches the mask
