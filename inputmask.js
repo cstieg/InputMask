@@ -36,7 +36,7 @@ var inputMask = {
       if (elements[i].hasAttribute('mask')) {
         var mask = elements[i].getAttribute('mask');
         elements[i].addEventListener('keypress', inputMask.maskKeyPress);
-        elements[i].addEventListener('onpaste', inputMask.maskPaste);
+        elements[i].addEventListener('paste', inputMask.maskPaste);
       }
     }
   },
@@ -46,17 +46,57 @@ var inputMask = {
     if (e.ctrlKey || e.altKey) return;
     this.currentPosition = this.selectionStart;
     var maskInfo = inputMask.getMaskInfo(this.getAttribute('mask'));
+    e.preventDefault();
 
     // process inputted char
     var isValidChar = inputMask.processChar(this, e.key, maskInfo, e);
     if (isValidChar) {
+      this.value += isValidChar;
       return true;
     }
     return inputMask.cancelInput(e);
   },
 
+  // Handles pasting into an input element with a 'mask' property
+  maskPaste: function(e) {
+    this.currentPosition = this.selectionStart;
+    var maskInfo = inputMask.getMaskInfo(this.getAttribute('mask'));
+    var pasteString = e.clipboardData.getData('text');
+    var beforeSelection = this.value.substr(0, this.selectionStart);
+    var afterSelection = this.value.substr(this.selectionEnd);
 
-  processChar: function(inputObj, inputChar, maskInfo, e) {
+    // put what was before selection in resulting product
+    this.value = beforeSelection;
+    var i;
+    var isValidChar;
+
+    // process pasted characters that replace selection
+    for (i = 0; i < pasteString.length; i++) {
+      isValidChar = inputMask.processChar(this, pasteString[i], maskInfo, e);
+      if (isValidChar) {
+        this.value += isValidChar;
+      }
+    }
+
+    // process characters back in that were originally in input following selection
+    for (i = 0; i < afterSelection.length; i++) {
+      isValidChar = inputMask.processChar(this, afterSelection[i], maskInfo, e);
+      if (isValidChar) {
+        this.value += isValidChar;
+      }
+    }
+
+    // Cancel paste since pasted characters have already been processed into value
+    e.preventDefault();
+  },
+
+  // Processes character input one at a time
+  // Parameters:
+  //   inputObj - input DOM element which is receiving input
+  //   inputChar - the character being processed
+  //   maskInfo - the object containing the mask strings
+  processChar: function(inputObj, inputChar, maskInfo) {
+    var returnChar = '';
     var symbolMaskChar = '';
     var literalMaskChar = '';
     while (inputObj.currentPosition < maskInfo.symbolMask.length) {
@@ -66,32 +106,32 @@ var inputMask = {
 
       // If mask has a symbol here, test to make sure input character meets the constraints of the mask
       if (symbolMaskChar !== ' ') {
-        // cancel input character if doesn't meet constraints of mask
+        // disallow input character if doesn't meet constraints of mask
         if (!inputMask.testSymbols(symbolMaskChar, inputChar)) {
           return false;
         }
-        inputMask.convertLetterCase(inputObj, e, inputChar, inputObj.currentPosition, maskInfo);
-
+        returnChar += inputMask.convertedLetterCase(inputChar, maskInfo.caseMask.charAt(inputObj.CurrentPosition));
+        inputObj.currentPosition++;
         // If have filled the last wildcard symbol, add the rest of the literal mask
-        var charsLeft = maskInfo.symbolMask.length - (inputObj.currentPosition + 1);
-        if (maskInfo.symbolMask.substr(inputObj.currentPosition + 1, charsLeft).trim() === '') {
-          inputObj.value += maskInfo.literalMask.substr(inputObj.currentPosition + 1, charsLeft);
+        var charsLeft = maskInfo.symbolMask.length - (inputObj.currentPosition);
+        if (maskInfo.symbolMask.substr(inputObj.currentPosition, charsLeft).trim() === '') {
+          returnChar += maskInfo.literalMask.substr(inputObj.currentPosition, charsLeft);
+          inputObj.currentPosition++;
         }
-
-        return true;
+        return returnChar;
       }
       // if mask is not a symbol here, find the next place this input character matches the mask
       else {
         // drop through any framework characters
         if (literalMaskChar != inputChar) {
-          inputObj.value += literalMaskChar;
+          returnChar += literalMaskChar;
           inputObj.currentPosition++;
           continue;
         }
-        return true;
+        return returnChar;
       }
     }
-    // if there are no more characters in mask, cancel input
+    // if there are no more characters in mask, don't add character to input field
     return false;
   },
 
@@ -144,8 +184,7 @@ var inputMask = {
   //   chr - the character just typed
   //   index - the location in the input field of the character just typed
   //   maskInfo - the maskInfo object containing the caseMask
-  convertLetterCase: function(inputObj, e, chr, index, maskInfo) {
-    e.preventDefault();
+  convertLetterCase: function(inputObj, chr, index, maskInfo) {
     inputObj.value = insertCharAt(inputObj.value, index, inputMask.convertedLetterCase(chr, maskInfo.caseMask.charAt(index)));
   },
 
